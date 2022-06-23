@@ -1,0 +1,11 @@
+<aura:component implements="force:appHostable,flexipage:availableForAllPageTypes,flexipage:availableForRecordHome,force:hasRecordId,forceCommunity:availableForAllPageTypes,force:lightningQuickAction" access="global" >
+    
+    <aura:attribute name="recordId"     type="Id" />
+    <aura:attribute name="accountRecord" type="List"/>
+    
+    <force:recordData recordId="{!v.recordId}"
+                      fields="Id,Name"
+                      targetFields="{!v.accountRecord}"
+                      />
+    <lightning:button label="Print Chats" title="Neutral action" onclick="{! c.handleClick }"/>
+</aura:component>
