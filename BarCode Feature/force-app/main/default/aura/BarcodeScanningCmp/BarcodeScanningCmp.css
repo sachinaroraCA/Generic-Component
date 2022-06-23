@@ -1,0 +1,14 @@
+/**
+ * Created by Cloud Analogy on 4/17/2020.
+ */
+.THIS {
+    background-color : white;
+}
+.THIS .slds-accordion__summary-heading{
+    background-color: #ebf2f5;
+    padding: 8px;
+    border-radius: 5px;
+}
+.THIS .barcodeButton{
+    width : 100%;
+}

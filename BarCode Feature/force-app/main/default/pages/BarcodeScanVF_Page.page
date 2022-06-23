@@ -1,0 +1,125 @@
+<apex:page id="BarcodeScanVF_Page" controller="BarcodeController" showheader="false" sidebar="false" standardStylesheets="false" >
+    
+    <apex:stylesheet value="{!URLFOR($Resource.alertify, 'alertify.js-0.3.11/themes/alertify.core.css')}"/>
+    <apex:stylesheet value="{!URLFOR($Resource.alertify, 'alertify.js-0.3.11/themes/alertify.default.css')}"/>
+    <apex:includeScript value="{!URLFOR($Resource.alertify, 'alertify.js-0.3.11/lib/alertify.min.js')}"/>
+    
+    <apex:form >
+        <apex:actionFunction action="{!setBarcode}" name="barcodeAction" reRender="false">
+            <apex:param value="" name="barcodeSerial" />
+        </apex:actionFunction>
+    </apex:form>
+    
+    <img width="320px;" height="240px;" src="" id="picture" style="border:10px groove silver" /><br/>
+    <input id="Take-Picture" type="file" accept="image/*;capture=camera" />
+    <!--<p>If the picture looks clear, click the button to decode</p>-->
+    <input type="button" value="Decode" id="_decode-button" onclick="DecodeBar();" />
+    
+    <p id="textbit"></p>
+    
+    
+    <script type="text/javascript">
+    var startTime;
+    var interval;
+    var recordId;
+    var response ;
+    var takePicture = document.querySelector("#Take-Picture");
+    var showPicture = document.querySelector("#picture");
+    Result = document.querySelector("#textbit");
+    Canvas = document.createElement("canvas");
+    Canvas.width=640;
+    Canvas.height=480;
+    var resultArray = [];
+    ctx = Canvas.getContext("2d");
+    
+    showPicture.onload = function(){
+        ctx.drawImage(showPicture,0,0,Canvas.width,Canvas.height);
+        document.querySelectorAll('input[id*="_decode-button"]')[0].click();
+    };
+    
+    var workerCount = 0;
+    
+    function receiveMessage(e) {
+        var elapsedTime=new Date() - startTime;
+        if(e.data.success === "log") {
+            console.log(e.data.result);
+            return;
+        }
+        workerCount--;
+        if(e.data.success){
+            clearInterval(interval);
+            var tempArray = e.data.result;
+            for(var i = 0; i < tempArray.length; i++) {
+                if(resultArray.indexOf(tempArray[i]) == -1) {
+                    resultArray.push(tempArray[i]);
+                }
+            }
+            var res = resultArray[0].split(":")[1].trim();
+            alertify.success('Decoded barcode');
+            console.log('res .. '+res);
+            // callScannerComponent(res);
+            barcodeAction(res);
+        }else{
+            if(resultArray.length === 0 && workerCount === 0) {
+                clearInterval(interval);
+                Result.innerHTML="Decoding failed in " + elapsedTime + ' milliseconds';
+                alertify.error('Unable to decode');
+            }
+        }
+    }
+    
+    var DecodeWorker = new Worker("{!URLFOR($Resource.DecodeWorker)}");
+    var RightWorker = new Worker("{!URLFOR($Resource.DecodeWorker)}");
+    var LeftWorker = new Worker("{!URLFOR($Resource.DecodeWorker)}");
+    var FlipWorker = new Worker("{!URLFOR($Resource.DecodeWorker)}");
+    DecodeWorker.onmessage = receiveMessage;
+    RightWorker.onmessage = receiveMessage;
+    LeftWorker.onmessage = receiveMessage;
+    FlipWorker.onmessage = receiveMessage;
+    
+    if(takePicture && showPicture) {
+        takePicture.onchange = function (event) {
+            var files = event.target.files
+            if (files && files.length > 0) {
+                file = files[0];
+                console.log('file');
+                console.log(file);
+                try {
+                    var URL = window.URL || window.webkitURL;
+                    var imgURL = URL.createObjectURL(file);
+                    showPicture.src = imgURL;
+                    URL.revokeObjectURL(imgURL);
+                }
+                catch (e) {
+                    try {
+                        var fileReader = new FileReader();
+                        fileReader.onload = function (event) {
+                            showPicture.src = event.target.result;
+                        };
+                        fileReader.readAsDataURL(file);
+                    }
+                    catch (e) {
+                        Result.innerHTML = "Neither createObjectURL or FileReader are supported";
+                    }
+                }
+            }
+        };
+    }
+    
+    function DecodeBar(){
+        startTime=new Date();
+        Result.innerHTML="";
+        resultArray = [];
+        workerCount = 4;
+        alertify.log('Launching workers');
+        console.log('IN DECODE BAR');
+        interval=setInterval(function(){alertify.log('Still working');},5000);
+        console.log('interval');
+        DecodeWorker.postMessage({pixels: ctx.getImageData(0,0,Canvas.width,Canvas.height).data, cmd: "normal"});
+        RightWorker.postMessage({pixels: ctx.getImageData(0,0,Canvas.width,Canvas.height).data, cmd: "right"});
+        LeftWorker.postMessage({pixels: ctx.getImageData(0,0,Canvas.width,Canvas.height).data, cmd: "left"});
+        FlipWorker.postMessage({pixels: ctx.getImageData(0,0,Canvas.width,Canvas.height).data, cmd: "flip"});
+    }
+    
+    </script>
+</apex:page>

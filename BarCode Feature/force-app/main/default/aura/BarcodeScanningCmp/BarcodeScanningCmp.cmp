@@ -1,0 +1,294 @@
+<!--
+ - Created by Cloud Analogy on 4/17/2020.
+ -->
+
+<aura:component description="BarcodeScanningCmp" controller="BarcodeController" implements="flexipage:availableForAllPageTypes,force:appHostable" access="global">
+    <aura:attribute name="barcodeSerial" type="String" />
+    <aura:attribute name="barcodeWrapper" type="Object" />
+    <aura:attribute name="selectedTransType" type="String" />
+    <aura:attribute name="errorMessage" type="String" default="Invalid String" />
+    <aura:attribute name="vfPageUrl" type="String" default="/apex/BarcodeScanVF_Page?barcode=123" />
+    <aura:attribute name="barcodePrompt" type="Boolean" default="false" />
+    
+    <aura:attribute name="showToast" type="Boolean" default="false" />
+    <aura:attribute name="variant" type="String" />
+    <aura:attribute name="message" type="String" />
+    <aura:attribute name="isSpinnerShow" type="Boolean" default="false" />
+
+
+    <aura:handler name="change" action="{!c.barcodeSerial}" value="{!v.vfPageUrl}" />
+    
+    
+
+
+    <div class="slds-box">
+        <aura:if isTrue="{!v.isSpinnerShow}">
+            <lightning:spinner variant="brand" />
+        </aura:if>
+        <aura:if isTrue="{!v.showToast}">
+            <c:NotificationToast_cmp variant="{!v.variant}" message="{!v.message}" showToast="{!v.showToast}" />
+        </aura:if>
+        <aura:if isTrue="{!v.barcodePrompt}">
+            <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open slds-modal_small" aria-labelledby="modal-heading-01" aria-modal="true" aria-describedby="modal-content-id-1">
+                <div class="slds-modal__container">
+                    <header class="slds-modal__header">
+                        <button class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse" title="Close">
+                            <span class="slds-assistive-text">Close</span>
+                        </button>
+                        <h2 id="modal-heading-01" class="slds-modal__title slds-hyphenate">Scan Barcode</h2>
+                    </header>
+                    <div class="slds-modal__content slds-p-around_medium" id="modal-content-id-1" style="text-align:center;">
+                        <iframe aura:id="barcodeFrame" src="{!v.vfPageUrl}" height="350px" width="350px;" style="border: 2px solid #ebf2f5; border-radius:5px;"/>
+                    </div>
+                    <footer class="slds-modal__footer">
+                        <button class="slds-button slds-button_brand" onclick="{!c.openVcuFromBarcode}">Done</button>
+                    </footer>
+                </div>
+            </section>
+            <div class="slds-backdrop slds-backdrop_open"></div>
+        </aura:if>
+        <div class="slds-grid slds-wrap slds-gutters">
+            <div class="slds-col slds-size--1-of-1 slds-grid slds-wrap slds-m-bottom--medium slds-border--bottom slds-p-around--small">
+                <div class="slds-col slds-size--1-of-3 slds-text-heading--medium ">Barcode</div>
+                <div class="slds-col slds-size--1-of-3" style="text-align : center;">
+                    <lightning:buttonGroup>
+                        <lightning:button label="Save" onclick="{!c.savePrompt}" disabled="{!empty(v.barcodeSerial)}"/>
+                        <lightning:button label="Reset" onclick="{!c.clearBarcode}" />
+                    </lightning:buttonGroup>
+                </div>
+                <div class="slds-col slds-size--1-of-3"></div>
+            </div>
+
+            <div class="slds-col slds-size--1-of-1 slds-grid slds-wrap slds-p-bottom--medium slds-border--bottom">
+                <div class="slds-col slds-size--1-of-3 slds-p-top--medium">
+                     <lightning:button  variant="brand" label="Scan Barcode" class="barcodeButton" onclick="{!c.openBarCode}" />
+                </div>
+                <div class="slds-col slds-size--1-of-3">
+                    <lightning:input name="Barcode" label="Barcode" value="{!v.barcodeSerial}" onblur="{!c.getVcuDetail}" />
+                </div>
+                <div class="slds-col slds-size--1-of-3">
+                    <lightning:input disabled="true" label="VCU Status" name="Status" value="{!v.barcodeWrapper.vcuObj.VCU_Status__c}" />
+                </div>
+            </div>
+
+            <div class="slds-col slds-size--1-of-1 slds-grid slds-wrap">
+                <div class="slds-col slds-medium-size_1-of-1 slds-large-size--1-of-1 slds-small-size--1-of-1 slds-grid slds-wrap">
+                    <div class="slds-col slds-size--1-of-1  slds-m-top--small slds-p-vertical--small" style="background-color: #ecebea; border-radius:5px;">
+                        VCU Transaction
+                    </div>
+                    <aura:if isTrue="{!and(v.barcodeWrapper != NULL , v.barcodeWrapper.transactionType.length > 0)}">
+                        <div class="slds-col slds-size--1-of-1">
+                            <lightning:select class="slds-m-vertical--x-small" name="colorId" label="VCU Transaction Type" onchange="{!c.changeTransaction}" aura:id="colorId" value="{!v.selectedTransType}">
+                                <option text="--None--" value="" />
+                                <aura:iteration items="{!v.barcodeWrapper.transactionType}" var="transactionsType">
+                                    <option text="{!transactionsType.label}" value="{!transactionsType.value}" />
+                                </aura:iteration>
+                            </lightning:select>
+                        </div>
+                    </aura:if>
+                    <aura:if isTrue="{!v.selectedTransType == 'Pickup'}">
+                        <div class="slds-col slds-size--1-of-1">
+                            <c:strike_lookup
+                                    label="Surgery" object="Surgery__c" searchField="Name"
+                                    placeholder="Search Surgery..." iconName="standard:home"
+                                    order="Name" limit="10" loadingMessage="Loading..." errorMessage="{!v.errorMessage}"
+                                    value="{!v.barcodeWrapper.vcuTransaction.Surgery__c}"
+                            />
+                        </div>
+                    </aura:if>
+                    <aura:if isTrue="{!(v.selectedTransType == 'Allocated' || v.selectedTransType == 'Re-Allocated' || v.selectedTransType  == 'Assigned' || v.selectedTransType == 'Re-Assigned' || v.selectedTransType =='Unallocate')}">
+                        <div class="slds-col slds-size--1-of-1">
+                            <c:strike_lookup aura:id="VCU_Transaction_Surgery"
+                                             label="Surgery" object="Surgery__c" searchField="Name"
+                                             placeholder="Search Surgery..." iconName="standard:home"
+                                             order="Name" limit="10" loadingMessage="Loading..." errorMessage="{!v.errorMessage}"
+                                             value="{!v.barcodeWrapper.vcuTransaction.Surgery__c}"
+                            />
+                        </div>
+                    </aura:if>
+                    <aura:if isTrue="{!(v.selectedTransType  == 'Facility')}">
+                        <div class="slds-col slds-size--1-of-1">
+                            <c:strike_lookup aura:id="facilityTrans"
+                                             label="Facility" object="Facilities__c" searchField="Name"
+                                             placeholder="Search Facility..." iconName="standard:home"
+                                             order="Name" limit="10" loadingMessage="Loading..." errorMessage="{!v.errorMessage}"
+                                             value="{!v.barcodeWrapper.vcuTransaction.Facility__c}"
+                            />
+                        </div>
+                    </aura:if>
+                    <aura:if isTrue="{!(v.selectedTransType  == 'Warehouse Clean' || v.selectedTransType  == 'Pickup')}">
+                        <div class="slds-col slds-size--1-of-1">
+                            <c:strike_lookup
+                                    label="Warehouse" object="Warehouse__c" searchField="Name"
+                                    placeholder="Search Warehouse..." iconName="standard:home"
+                                    order="Name" limit="10" loadingMessage="Loading..." errorMessage="{!v.errorMessage}"
+                                    value="{!v.barcodeWrapper.vcuTransaction.Warehouse__c}"
+                            />
+                        </div>
+                    </aura:if>
+                    <aura:if isTrue="{!(v.selectedTransType  == 'Warehouse Swap')}">
+                        <!--Link of vcuTransaction.Warehouse__c -->
+                    </aura:if>
+                    <aura:if isTrue="{!(v.selectedTransType  == 'Warehouse Swap')}">
+                        <div class="slds-col slds-size--1-of-1">
+                            <c:strike_lookup aura:id="WarehouseSwap"
+                                             label="Swap Warehouse" object="Warehouse__c" searchField="Name"
+                                             placeholder="Search Warehouse..." iconName="standard:home"
+                                             order="Name" limit="10" loadingMessage="Loading..." errorMessage="{!v.errorMessage}"
+                                             value="{!v.barcodeWrapper.vcuTransaction.Warehouse__c}"
+                            />
+                        </div>
+                    </aura:if>
+                    <aura:if isTrue="{!(v.selectedTransType  == 'Out for Repairs')}">
+                        <div class="slds-col slds-size--1-of-1">
+                            <lightning:input class="slds-m-vertical--x-small" type="Date" label="Expected Date to return" value="{!v.barcodeWrapper.vcuTransaction.Expected_Date_to_Return__c}" />
+                        </div>
+                    </aura:if>
+                    <aura:if isTrue="{!(v.selectedTransType  == 'Quarantine')}">
+                        <div class="slds-col slds-size--1-of-1">
+                            <lightning:textarea  class="slds-m-vertical--x-small" label="Reason for Quarantine" value="{!v.barcodeWrapper.vcuTransaction.Reason_for_Quarantine__c}" />
+                        </div>
+                    </aura:if>
+                    <aura:if isTrue="{!(v.selectedTransType  == 'Re-Assigned')}">
+                        <div class="slds-col slds-size--1-of-1">
+                            <lightning:textarea aura:id="RrAssignment" class="slds-m-vertical--x-small" label="Reason for Re-Assignment" value="{!v.barcodeWrapper.vcuTransaction.Reason_for_Re_Assignment__c}" />
+                        </div>
+                    </aura:if>
+                    <aura:if isTrue="{!(v.selectedTransType  == 'Curbside Cleaning')}">
+                        <div class="slds-col slds-size--1-of-1">
+                            <lightning:input type="text" label="Reason for Curbside Cleaning" value="{!v.barcodeWrapper.vcuTransaction.Reason_for_Curbside_Cleaning__c}" />
+                        </div>
+                    </aura:if>
+                </div>
+                <div class="slds-col slds-medium-size_1-of-1 slds-large-size--1-of-1 slds-small-size--1-of-1 slds-grid slds-wrap">
+                    <div class="slds-col slds-size--1-of-1  slds-m-top--small slds-p-vertical--small" style="background-color: #ecebea; border-radius:5px;">
+                        Maintenance Log
+                    </div>
+                    <aura:if isTrue="{!and((v.barcodeWrapper.status == 'Warehouse Swap' || v.barcodeWrapper.status  == 'Pickup' ||v.barcodeWrapper.status  == 'Out for Repairs' ||v.barcodeWrapper.status  == 'Quarantine'), (v.selectedTransType  == 'Warehouse Clean'))}">
+                        <div class="slds-col slds-size--1-of-1">
+                            <c:strike_lookup
+                                    label="Performed By" object="User" searchField="Name"
+                                    placeholder="Search User..." iconName="standard:home"
+                                    order="Name" limit="10" loadingMessage="Loading..." errorMessage="{!v.errorMessage}"
+                                    value="{!v.barcodeWrapper.maintenanceLog.Performed_By__c}"
+                            />
+                        </div>
+                        <div class="slds-col slds-size--1-of-1">
+                            <c:strike_lookup
+                                    label="VCU Serial Number" object="VCU__c" searchField="Name"
+                                    placeholder="Search VCU..." iconName="standard:home"
+                                    order="Name" limit="10" loadingMessage="Loading..." errorMessage="{!v.errorMessage}"
+                                    value="{!v.barcodeWrapper.maintenanceLog.VCU_Serial_Number__c}"
+                            />
+                        </div>
+                        <div class="slds-col slds-size--1-of-1">
+                            <lightning:input class="slds-m-vertical--x-small" type="checkbox" label="Antimicrobial Treatment" name="input2" checked="{!v.barcodeWrapper.maintenanceLog.Antimicrobial_Treatment__c}"/>
+                        </div>
+                        <div class="slds-col slds-size--1-of-1">
+                            <lightning:input class="slds-m-vertical--x-small" type="checkbox" label="Clean Tag" name="input2" checked="{!v.barcodeWrapper.maintenanceLog.Clean_Tag__c}" />
+                        </div>
+                        <div class="slds-col slds-size--1-of-1">
+                            <lightning:input class="slds-m-vertical--x-small" type="Number" label="Current Unit Hours" value="{!v.barcodeWrapper.maintenanceLog.Current_Unit_Hours__c}" />
+                        </div>
+                        <div class="slds-col slds-size--1-of-1">
+                            <lightning:input class="slds-m-vertical--x-small" type="checkbox" label="Electrical Cords" name="input2" checked="{!v.barcodeWrapper.maintenanceLog.Electrical_Cords__c}"/>
+                        </div>
+                        <div class="slds-col slds-size--1-of-1">
+                            <lightning:input class="slds-m-vertical--x-small" type="checkbox" label="Filter Cleaned" name="input2" checked="{!v.barcodeWrapper.maintenanceLog.Filter_Cleaned__c}"/>
+                        </div>
+                        <div class="slds-col slds-size--1-of-1">
+                            <lightning:input class="slds-m-vertical--x-small" type="checkbox" label="Patient Manual" name="input2" checked="{!v.barcodeWrapper.maintenanceLog.Patient_Manual__c}"/>
+                        </div>
+                        <div class="slds-col slds-size--1-of-1">
+                            <lightning:input class="slds-m-vertical--x-small" type="Date" label="Maintenance Date" value="{!v.barcodeWrapper.maintenanceLog.Maintenance_Date__c}" />
+                        </div>
+                    </aura:if>
+
+                    <aura:if isTrue="{!(v.selectedTransType  == 'Curbside Cleaning')}">
+                        <div class="slds-col slds-size--1-of-1">
+                            <c:strike_lookup
+                                    label="VCU Serial Number" object="VCU__c" searchField="Name"
+                                    placeholder="Search VCU..." iconName="standard:home"
+                                    order="Name" limit="10" loadingMessage="Loading..." errorMessage="{!v.errorMessage}"
+                                    value="{!v.barcodeWrapper.maintenanceLog.VCU_Serial_Number__c}"
+                            />
+                        </div>
+                        <div class="slds-col slds-size--1-of-1">
+                             <lightning:input class="slds-m-vertical--x-small" type="checkbox" label="Antimicrobial Treatment" name="input2" checked="{!v.barcodeWrapper.maintenanceLog.Antimicrobial_Treatment__c}"/>
+                        </div>
+                        <div class="slds-col slds-size--1-of-1">
+                            <lightning:input class="slds-m-vertical--x-small" type="Number" label="Current Unit Hours" value="{!v.barcodeWrapper.maintenanceLog.Current_Unit_Hours__c}" />
+                        </div>
+                        <div class="slds-col slds-size--1-of-1">
+                            <lightning:input class="slds-m-vertical--x-small" type="checkbox" label="Swap Filter" name="input2" checked="{!v.barcodeWrapper.maintenanceLog.Swap_Filter__c}" />
+                        </div>
+                        <div class="slds-col slds-size--1-of-1">
+                            <lightning:input class="slds-m-vertical--x-small" type="checkbox" label="Refill Fluid" name="input2" checked="{!v.barcodeWrapper.maintenanceLog.Refill_Fluid__c}"/>
+                        </div>
+                        <div class="slds-col slds-size--1-of-1">
+                            <lightning:input class="slds-m-vertical--x-small" type="checkbox" label="Patient Manual" name="input2" checked="{!v.barcodeWrapper.maintenanceLog.Patient_Manual__c}"/>
+                        </div>
+                    </aura:if>
+                </div>
+
+                <div class="slds-col slds-medium-size_1-of-1 slds-large-size--1-of-1 slds-small-size--1-of-1 slds-grid slds-wrap">
+                    <div class="slds-col slds-size--1-of-1  slds-m-top--small slds-p-vertical--small" style="background-color: #ecebea; border-radius:5px;">
+                        Repair Log
+                    </div>
+
+                    <aura:if isTrue="{!(and(v.barcodeWrapper.status == 'Warehouse Clean' , v.selectedTransType == 'Out for Repairs') || and(v.barcodeWrapper.status == 'Quarantine' , v.selectedTransType == 'Out for Repairs'))}">
+                        <div class="slds-col slds-size--1-of-1">
+                            <lightning:input class="slds-m-vertical--x-small" type="Date" label="Date Issue Identified" value="{!v.barcodeWrapper.repairLog.Date_Issue_Identified__c}" />
+                        </div>
+                        <div class="slds-col slds-size--1-of-1">
+                            <lightning:textarea class="slds-m-vertical--x-small" label="Repair Issue" value="{!v.barcodeWrapper.repairLog.Repair_Issue__c}" />
+                        </div>
+                        <div class="slds-col slds-size--1-of-1">
+                            <lightning:input class="slds-m-vertical--x-small" type="Number" label="Current Unit Hours" value="{!v.barcodeWrapper.repairLog.Current_Unit_Hours__c}" />
+                        </div>
+                        <div class="slds-col slds-size--1-of-1">
+                            <lightning:input class="slds-m-vertical--x-small" type="Date" label="Repair Quote Date" value="{!v.barcodeWrapper.repairLog.Repair_Quote_Date__c}" />
+                        </div>
+                        <div class="slds-col slds-size--1-of-1">
+                            <lightning:input class="slds-m-vertical--x-small" type="text" label="RMA" value="{!v.barcodeWrapper.repairLog.RMA__c}" />
+                        </div>
+                        <div class="slds-col slds-size--1-of-1">
+                            <lightning:input class="slds-m-vertical--x-small" type="number" name="RCQ" label="Repair Cost Quote" value="{!v.barcodeWrapper.repairLog.Repair_Cost_Quote__c}" formatter="currency" step="0.01"/>
+                        </div>
+                        <div class="slds-col slds-size--1-of-1">
+                            <lightning:input class="slds-m-vertical--x-small" type="Date" label="Repair Ship Date" value="{!v.barcodeWrapper.repairLog.Repair_Ship_Date__c}" />
+                        </div>
+                    </aura:if>
+
+                    <aura:if isTrue="{!and(v.barcodeWrapper.status == 'Out for Repairs' , v.selectedTransType == 'Warehouse Clean')}">
+                        <div class="slds-col slds-size--1-of-1">
+                            <lightning:input class="slds-m-vertical--x-small" type="Date" label="Repair Return Date" value="{!v.barcodeWrapper.repairLog.Repair_Return_Date__c}" />
+                        </div>
+                        <div class="slds-col slds-size--1-of-1">
+                            <lightning:input class="slds-m-vertical--x-small" type="text" label="Repair Invoice Number" value="{!v.barcodeWrapper.repairLog.Repair_Invoice_Number__c}" />
+                        </div>
+                        <div class="slds-col slds-size--1-of-1">
+                            <lightning:input class="slds-m-vertical--x-small" type="Date" label="Repair Invoice Date" value="{!v.barcodeWrapper.repairLog.Repair_Invoice_Date__c}" />
+                        </div>
+                        <div class="slds-col slds-size--1-of-1">
+                            <lightning:select class="slds-m-vertical--x-small" name="colorId" label="Covered By Warranty" aura:id="cbw" value="{!v.barcodeWrapper.repairLog.Covered_By_Warranty__c}">
+                                <option text="--None--" value="" />
+                                <aura:iteration items="{!v.barcodeWrapper.coveredByWarrantyPicklist}" var="picklistWrapper">
+                                    <option text="{!picklistWrapper.label}" value="{!picklistWrapper.value}" />
+                                </aura:iteration>
+                            </lightning:select>
+                        </div>
+                        <div class="slds-col slds-size--1-of-1">
+                            <lightning:input class="slds-m-vertical--x-small" type="number" name="RCA" label="Repair Cost Actual" value="{!v.barcodeWrapper.repairLog.Repair_Cost_Actual__c}" formatter="currency" step="0.01"/>
+                        </div>
+                        <div class="slds-col slds-size--1-of-1">
+                            <lightning:textarea class="slds-m-vertical--x-small" label="Repairs Performed" value="{!v.barcodeWrapper.repairLog.Repairs_Performed__c}" />
+                        </div>
+
+                    </aura:if>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</aura:component>

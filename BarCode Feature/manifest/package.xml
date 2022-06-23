@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Package xmlns="http://soap.sforce.com/2006/04/metadata">
     <types>
-        <members>PrintChatterPageController</members>
-        <members>PrintChatterPageControllerTestClass</members>
+        <members>BarcodeController</members>
+        <members>BarcodeControllerTest</members>
         <name>ApexClass</name>
     </types>
     <types>
-        <members>PrintChatterPage</members>
+        <members>BarcodeScanVF_Page</members>
         <name>ApexPage</name>
     </types>
     <types>
-        <members>PrintChatterComponent</members>
+        <members>BarcodeScanningCmp</members>
         <name>AuraDefinitionBundle</name>
     </types>
     <version>54.0</version>
